@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FCFS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <img src="https://i.pinimg.com/736x/71/7e/1e/717e1e8ef23e658ab8964928b84caa3e.jpg" alt="Logo" class="logo">
+
+    <div class="content">
+        <h1>FCFS</h1>
+        <div class="form-group">
+            <label for="numProcessesFcfs">Number of Processes:</label>
+            <input type="number" id="numProcessesFcfs" min="1" value="3">
+            <button id="generateBtn">Generate Form</button>
+        </div>
+        <div id="processForm" class="form-group"></div>
+        <button id="calculateBtn">Calculate</button>
+        <div id="result"></div>
+    </div>
+
+    <footer>
+        <div>© Eclipse.inc</div>
+        <div>Nama Pembuat: M.Risqullah</div>
+    </footer>
+
+    <script>
+        // Fungsi untuk membuat form inputan proses
+        function generateForm() {
+            const numProcesses = document.getElementById('numProcessesFcfs').value;
+            const formContainer = document.getElementById('processForm');
+            formContainer.innerHTML = '';
+            for (let i = 1; i <= numProcesses; i++) {
+                const formDiv = document.createElement('div');
+                formDiv.className = 'form-group';
+                formDiv.innerHTML = `
+                    <label>Process ${i}:</label>
+                    <input type="text" id="processName${i}" placeholder="Process Name">
+                    <input type="number" id="arrivalTime${i}" placeholder="Arrival Time">
+                    <input type="number" id="burstTime${i}" placeholder="Burst Time">
+                `;
+                formContainer.appendChild(formDiv);
+            }
+        }
+
+        // Fungsi untuk menghitung FCFS
+        function calculate() {
+            const numProcesses = document.getElementById('numProcessesFcfs').value;
+            const processes = [];
+            for (let i = 1; i <= numProcesses; i++) {
+                processes.push({
+                    name: document.getElementById(`processName${i}`).value || `P${i}`,
+                    arrivalTime: parseFloat(document.getElementById(`arrivalTime${i}`).value) || 0,
+                    burstTime: parseFloat(document.getElementById(`burstTime${i}`).value) || 1
+                });
+            }
+            const result = fcfs(processes);
+            displayResult(result);
+        }
+
+        // Fungsi algoritma FCFS
+        function fcfs(processes) {
+            processes.sort((a, b) => a.arrivalTime - b.arrivalTime);
+            let currentTime = 0;
+            const resultProcesses = [];
+            for (const process of processes) {
+                currentTime = Math.max(currentTime, process.arrivalTime);
+                process.completionTime = currentTime + process.burstTime;
+                process.waitingTime = currentTime - process.arrivalTime;
+                process.turnaroundTime = process.completionTime - process.arrivalTime;
+                resultProcesses.push(process);
+                currentTime = process.completionTime;
+            }
+            return {
+                processes: resultProcesses,
+                avgWaitingTime: resultProcesses.reduce((sum, p) => sum + p.waitingTime, 0) / resultProcesses.length,
+                avgTurnaroundTime: resultProcesses.reduce((sum, p) => sum + p.turnaroundTime, 0) / resultProcesses.length,
+                executionOrder: resultProcesses.map(p => p.name)
+            };
+        }
+
+        // Fungsi untuk menampilkan hasil
+        function displayResult(result) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+
+            // Tabel hasil
+            const table = document.createElement('table');
+            const headers = ['Process', 'Arrival Time', 'Burst Time', 'Completion Time', 'Waiting Time', 'Turnaround Time'];
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            result.processes.forEach(process => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${process.name}</td>
+                    <td>${process.arrivalTime}</td>
+                    <td>${process.burstTime}</td>
+                    <td>${process.completionTime}</td>
+                    <td>${process.waitingTime}</td>
+                    <td>${process.turnaroundTime}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            resultDiv.appendChild(table);
+
+            // Rata-rata
+            const avgRow = document.createElement('div');
+            avgRow.innerHTML = `
+                <p><strong>Average Waiting Time:</strong> ${result.avgWaitingTime.toFixed(2)}</p>
+                <p><strong>Average Turnaround Time:</strong> ${result.avgTurnaroundTime.toFixed(2)}</p>
+            `;
+            resultDiv.appendChild(avgRow);
+
+            // Gantt Chart
+            const ganttDiv = document.createElement('div');
+            ganttDiv.className = 'gantt-chart';
+            ganttDiv.innerHTML = '<h3>Gantt Chart</h3>';
+
+            const ganttTable = document.createElement('table');
+            ganttTable.className = 'gantt-table';
+            ganttTable.style.width = '100%';
+
+            // Baris header proses
+            const headerRowGantt = document.createElement('tr');
+            headerRowGantt.className = 'gantt-header';
+            const headerCellGantt = document.createElement('th');
+            headerCellGantt.style.border = 'none';
+            headerRowGantt.appendChild(headerCellGantt);
+
+            // Baris proses
+            const processRow = document.createElement('tr');
+            let totalWidth = 0;
+
+            result.processes.forEach(process => {
+                const cell = document.createElement('td');
+                cell.className = 'gantt-process';
+                cell.textContent = process.name;
+                cell.style.width = `${process.burstTime * 50}px`;
+                processRow.appendChild(cell);
+                totalWidth += process.burstTime * 50;
+            });
+
+            // Baris timeline
+            const timelineRow = document.createElement('tr');
+            timelineRow.className = 'gantt-timeline';
+
+            const timelineHeader = document.createElement('td');
+            timelineHeader.style.border = 'none';
+            timelineRow.appendChild(timelineHeader);
+
+            let startTime = 0;
+            result.processes.forEach(process => {
+                const timelineCell = document.createElement('td');
+                timelineCell.textContent = startTime;
+                timelineCell.style.width = `${process.burstTime * 50}px`;
+                timelineRow.appendChild(timelineCell);
+                startTime += process.burstTime;
+            });
+
+            // Sel tambahan untuk waktu akhir
+            const endCell = document.createElement('td');
+            endCell.textContent = startTime;
+            endCell.style.borderLeft = '1px solid #000';
+            timelineRow.appendChild(endCell);
+
+            ganttTable.appendChild(headerRowGantt);
+            ganttTable.appendChild(processRow);
+            ganttTable.appendChild(timelineRow);
+            ganttDiv.appendChild(ganttTable);
+            resultDiv.appendChild(ganttDiv);
+
+            // Cara menghitung rata-rata
+            const stepsDiv = document.createElement('div');
+            stepsDiv.className = 'calculation-steps';
+            stepsDiv.innerHTML = `
+                <h3>How to Calculate Averages:</h3>
+                <p><strong>Average Waiting Time:</strong></p>
+                <p>${result.processes.map(p => p.waitingTime).join(' + ')
+                } / ${result.processes.length} = ${result.avgWaitingTime.toFixed(2)}</p>
+                <p><strong>Average Turnaround Time:</strong></p>
+                <p>${result.processes.map(p => p.turnaroundTime).join(' + ')
+                } / ${result.processes.length} = ${result.avgTurnaroundTime.toFixed(2)}</p>
+            `;
+            resultDiv.appendChild(stepsDiv);
+        }
+
+        // Menambahkan event listener untuk tombol
+        document.getElementById('generateBtn').addEventListener('click', generateForm);
+        document.getElementById('calculateBtn').addEventListener('click', calculate);
+    </script>
+</body>
+
+</html>
