@@ -4,18 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priority</title>
+    <title>Priority Preemptive</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <img src="https://i.pinimg.com/736x/71/7e/1e/717e1e8ef23e658ab8964928b84caa3e.jpg" alt="Logo" class="logo">
+    <img src="https://i.pinimg.com/736x/71/7e/1e/717e1e8ef23e658ab8964928b84caa3e.jpg  " alt="Logo" class="logo">
 
     <div class="content">
-        <h1>Priority Non-Preemptive</h1>
+        <h1>Priority Preemptive</h1>
         <div class="form-group">
-            <label for="numProcessesPriority">Number of Processes:</label>
-            <input type="number" id="numProcessesPriority" min="1" value="3">
+            <label for="numProcessesPriorityPreemptive">Number of Processes:</label>
+            <input type="number" id="numProcessesPriorityPreemptive" min="1" value="3">
             <button id="generateBtn">Generate Form</button>
         </div>
         <div id="processForm" class="form-group"></div>
@@ -31,7 +31,7 @@
     <script>
         // Fungsi untuk membuat form inputan proses
         function generateForm() {
-            const numProcesses = document.getElementById('numProcessesPriority').value;
+            const numProcesses = document.getElementById('numProcessesPriorityPreemptive').value;
             const formContainer = document.getElementById('processForm');
             formContainer.innerHTML = '';
             for (let i = 1; i <= numProcesses; i++) {
@@ -48,45 +48,99 @@
             }
         }
 
-        // Fungsi untuk menghitung Priority
+        // Fungsi untuk menghitung Priority Preemptive
         function calculate() {
-            const numProcesses = document.getElementById('numProcessesPriority').value;
+            const numProcesses = document.getElementById('numProcessesPriorityPreemptive').value;
             const processes = [];
             for (let i = 1; i <= numProcesses; i++) {
                 processes.push({
                     name: document.getElementById(`processName${i}`).value || `P${i}`,
                     arrivalTime: parseFloat(document.getElementById(`arrivalTime${i}`).value) || 0,
                     burstTime: parseFloat(document.getElementById(`burstTime${i}`).value) || 1,
-                    priority: parseInt(document.getElementById(`priority${i}`).value) || 0
+                    priority: parseInt(document.getElementById(`priority${i}`).value) || 0,
+                    remainingTime: parseFloat(document.getElementById(`burstTime${i}`).value) || 1,
+                    startTime: null,
+                    completionTime: null,
+                    waitingTime: 0,
+                    turnaroundTime: 0
                 });
             }
-            const result = priority(processes);
+            const result = priorityPreemptive(processes);
             displayResult(result);
         }
 
-        // Fungsi algoritma Priority
-        function priorityNonPreemptive(processes) {
-            processes.sort((a, b) =>
-                a.priority - b.priority ||
-                a.arrivalTime - b.arrivalTime
-            );
+        // Fungsi algoritma Priority Preemptive
+        function priorityPreemptive(processes) {
             let currentTime = 0;
-            const resultProcesses = [];
-            for (const process of processes) {
-                currentTime = Math.max(currentTime, process.arrivalTime);
-                process.completionTime = currentTime + process.burstTime;
-                process.waitingTime = currentTime - process.arrivalTime;
-                process.turnaroundTime = process.completionTime - process.arrivalTime;
-                resultProcesses.push(process);
-                currentTime = process.completionTime;
+            const timeline = [];
+            let executingProcess = null;
+
+            while (true) {
+                // Filter processes that have arrived and are not completed
+                const readyProcesses = processes.filter(p =>
+                    p.arrivalTime <= currentTime &&
+                    p.completionTime === undefined
+                );
+
+                if (readyProcesses.length === 0) {
+                    if (processes.every(p => p.completionTime !== undefined)) {
+                        break;
+                    }
+                    currentTime++;
+                    continue;
+                }
+
+                // Sort by priority, then by arrival time
+                readyProcesses.sort((a, b) =>
+                    a.priority - b.priority ||
+                    a.arrivalTime - b.arrivalTime
+                );
+
+                const nextProcess = readyProcesses[0];
+
+                // Handle preemption
+                if (executingProcess !== null &&
+                    executingProcess.name !== nextProcess.name &&
+                    executingProcess.priority > nextProcess.priority) {
+
+                    // Record the preempted execution time
+                    timeline.push({
+                        process: executingProcess.name,
+                        start: currentTime,
+                        end: currentTime + 1
+                    });
+                    executingProcess.remainingTime--;
+                    currentTime++;
+                } else if (executingProcess === null || executingProcess.name !== nextProcess.name) {
+                    executingProcess = nextProcess;
+                    executingProcess.remainingTime = executingProcess.burstTime;
+                }
+
+                // Execute the current process for 1 time unit
+                timeline.push({
+                    process: executingProcess.name,
+                    start: currentTime,
+                    end: currentTime + 1
+                });
+                executingProcess.remainingTime--;
+                currentTime++;
+
+                // Check if the process is completed
+                if (executingProcess.remainingTime === 0) {
+                    executingProcess.completionTime = currentTime;
+                    executingProcess.turnaroundTime = executingProcess.completionTime - executingProcess.arrivalTime;
+                    executingProcess.waitingTime = executingProcess.turnaroundTime - executingProcess.burstTime;
+                }
             }
+
             return {
-                processes: resultProcesses,
-                avgWaitingTime: resultProcesses.reduce((sum, p) => sum + p.waitingTime, 0) / resultProcesses.length,
-                avgTurnaroundTime: resultProcesses.reduce((sum, p) => sum + p.turnaroundTime, 0) / resultProcesses.length,
-                executionOrder: resultProcesses.map(p => p.name)
+                processes: processes,
+                avgWaitingTime: processes.reduce((sum, p) => sum + p.waitingTime, 0) / processes.length,
+                avgTurnaroundTime: processes.reduce((sum, p) => sum + p.turnaroundTime, 0) / processes.length,
+                executionOrder: processes.map(p => p.name)
             };
         }
+
         // Fungsi untuk menampilkan hasil
         function displayResult(result) {
             const resultDiv = document.getElementById('result');

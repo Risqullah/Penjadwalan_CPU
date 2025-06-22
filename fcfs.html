@@ -105,13 +105,13 @@
             result.processes.forEach(process => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${process.name}</td>
-                    <td>${process.arrivalTime}</td>
-                    <td>${process.burstTime}</td>
-                    <td>${process.completionTime}</td>
-                    <td>${process.waitingTime}</td>
-                    <td>${process.turnaroundTime}</td>
-                `;
+            <td>${process.name}</td>
+            <td>${process.arrivalTime}</td>
+            <td>${process.burstTime}</td>
+            <td>${process.completionTime}</td>
+            <td>${process.waitingTime}</td>
+            <td>${process.turnaroundTime}</td>
+        `;
                 tbody.appendChild(row);
             });
             table.appendChild(tbody);
@@ -120,9 +120,9 @@
             // Rata-rata
             const avgRow = document.createElement('div');
             avgRow.innerHTML = `
-                <p><strong>Average Waiting Time:</strong> ${result.avgWaitingTime.toFixed(2)}</p>
-                <p><strong>Average Turnaround Time:</strong> ${result.avgTurnaroundTime.toFixed(2)}</p>
-            `;
+        <p><strong>Average Waiting Time:</strong> ${result.avgWaitingTime.toFixed(2)}</p>
+        <p><strong>Average Turnaround Time:</strong> ${result.avgTurnaroundTime.toFixed(2)}</p>
+    `;
             resultDiv.appendChild(avgRow);
 
             // Gantt Chart
@@ -134,50 +134,76 @@
             ganttTable.className = 'gantt-table';
             ganttTable.style.width = '100%';
 
-            // Baris header proses
-            const headerRowGantt = document.createElement('tr');
-            headerRowGantt.className = 'gantt-header';
-            const headerCellGantt = document.createElement('th');
-            headerCellGantt.style.border = 'none';
-            headerRowGantt.appendChild(headerCellGantt);
-
             // Baris proses
             const processRow = document.createElement('tr');
-            let totalWidth = 0;
-
-            result.processes.forEach(process => {
-                const cell = document.createElement('td');
-                cell.className = 'gantt-process';
-                cell.textContent = process.name;
-                cell.style.width = `${process.burstTime * 50}px`;
-                processRow.appendChild(cell);
-                totalWidth += process.burstTime * 50;
-            });
-
-            // Baris timeline
             const timelineRow = document.createElement('tr');
-            timelineRow.className = 'gantt-timeline';
 
-            const timelineHeader = document.createElement('td');
-            timelineHeader.style.border = 'none';
-            timelineRow.appendChild(timelineHeader);
+            let currentStart = result.timeline ? result.timeline[0].start : 0;
+            let currentProcess = result.timeline ? result.timeline[0].process : result.processes[0].name;
+            let processStartTime = currentStart;
 
-            let startTime = 0;
-            result.processes.forEach(process => {
-                const timelineCell = document.createElement('td');
-                timelineCell.textContent = startTime;
-                timelineCell.style.width = `${process.burstTime * 50}px`;
-                timelineRow.appendChild(timelineCell);
-                startTime += process.burstTime;
-            });
+            if (result.timeline) {
+                result.timeline.forEach((event, index) => {
+                    if (index === 0) return;
 
-            // Sel tambahan untuk waktu akhir
-            const endCell = document.createElement('td');
-            endCell.textContent = startTime;
-            endCell.style.borderLeft = '1px solid #000';
-            timelineRow.appendChild(endCell);
+                    if (event.process !== currentProcess) {
+                        // Create cell for previous process
+                        const processCell = document.createElement('td');
+                        processCell.className = 'gantt-process';
+                        processCell.textContent = currentProcess;
+                        processCell.style.width = `${(event.start - processStartTime) * 50}px`;
+                        processRow.appendChild(processCell);
 
-            ganttTable.appendChild(headerRowGantt);
+                        const timelineCell = document.createElement('td');
+                        timelineCell.textContent = processStartTime;
+                        timelineCell.style.width = `${(event.start - processStartTime) * 50}px`;
+                        timelineRow.appendChild(timelineCell);
+
+                        currentProcess = event.process;
+                        processStartTime = event.start;
+                    }
+                });
+
+                // Add the last process
+                const lastProcessCell = document.createElement('td');
+                lastProcessCell.className = 'gantt-process';
+                lastProcessCell.textContent = currentProcess;
+                lastProcessCell.style.width = `${(result.timeline[result.timeline.length - 1].end - processStartTime) * 50}px`;
+                processRow.appendChild(lastProcessCell);
+
+                const lastTimelineCell = document.createElement('td');
+                lastTimelineCell.textContent = processStartTime;
+                lastTimelineCell.style.width = `${(result.timeline[result.timeline.length - 1].end - processStartTime) * 50}px`;
+                timelineRow.appendChild(lastTimelineCell);
+
+                // Add end time cell
+                const endCell = document.createElement('td');
+                endCell.textContent = result.timeline[result.timeline.length - 1].end;
+                endCell.style.borderLeft = '1px solid #000';
+                timelineRow.appendChild(endCell);
+            } else {
+                let startTime = 0;
+                result.processes.forEach(process => {
+                    const processCell = document.createElement('td');
+                    processCell.className = 'gantt-process';
+                    processCell.textContent = process.name;
+                    processCell.style.width = `${process.burstTime * 50}px`;
+                    processRow.appendChild(processCell);
+
+                    const timelineCell = document.createElement('td');
+                    timelineCell.textContent = startTime;
+                    timelineCell.style.width = `${process.burstTime * 50}px`;
+                    timelineRow.appendChild(timelineCell);
+                    startTime += process.burstTime;
+                });
+
+                // Add end time cell
+                const endCell = document.createElement('td');
+                endCell.textContent = startTime;
+                endCell.style.borderLeft = '1px solid #000';
+                timelineRow.appendChild(endCell);
+            }
+
             ganttTable.appendChild(processRow);
             ganttTable.appendChild(timelineRow);
             ganttDiv.appendChild(ganttTable);
@@ -187,17 +213,16 @@
             const stepsDiv = document.createElement('div');
             stepsDiv.className = 'calculation-steps';
             stepsDiv.innerHTML = `
-                <h3>How to Calculate Averages:</h3>
-                <p><strong>Average Waiting Time:</strong></p>
-                <p>${result.processes.map(p => p.waitingTime).join(' + ')
+        <h3>How to Calculate Averages:</h3>
+        <p><strong>Average Waiting Time:</strong></p>
+        <p>${result.processes.map(p => p.waitingTime).join(' + ')
                 } / ${result.processes.length} = ${result.avgWaitingTime.toFixed(2)}</p>
-                <p><strong>Average Turnaround Time:</strong></p>
-                <p>${result.processes.map(p => p.turnaroundTime).join(' + ')
+        <p><strong>Average Turnaround Time:</strong></p>
+        <p>${result.processes.map(p => p.turnaroundTime).join(' + ')
                 } / ${result.processes.length} = ${result.avgTurnaroundTime.toFixed(2)}</p>
-            `;
+    `;
             resultDiv.appendChild(stepsDiv);
         }
-
         // Menambahkan event listener untuk tombol
         document.getElementById('generateBtn').addEventListener('click', generateForm);
         document.getElementById('calculateBtn').addEventListener('click', calculate);
