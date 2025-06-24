@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priority Preemptive</title>
+    <title>Round Robin</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-    <img src="https://i.pinimg.com/736x/71/7e/1e/717e1e8ef23e658ab8964928b84caa3e.jpg  " alt="Logo" class="logo">
+    <img src="https://i.pinimg.com/736x/71/7e/1e/717e1e8ef23e658ab8964928b84caa3e.jpg" alt="Logo" class="logo">
 
     <div class="content">
-        <h1>Priority Preemptive</h1>
+        <h1>Round Robin</h1>
         <div class="form-group">
-            <label for="numProcessesPriorityPreemptive">Number of Processes:</label>
-            <input type="number" id="numProcessesPriorityPreemptive" min="1" value="3">
+            <label for="numProcessesRoundRobin">Number of Processes:</label>
+            <input type="number" id="numProcessesRoundRobin" min="1" value="3">
+            <label for="numProcessesRoundRobin">Time Quantum:</label>
+            <input type="number" id="timeQuantum" placeholder="Time Quantum" value="2">
             <button id="generateBtn">Generate Form</button>
         </div>
         <div id="processForm" class="form-group"></div>
@@ -31,117 +31,117 @@
     <script>
         // Fungsi untuk membuat form inputan proses
         function generateForm() {
-            const numProcesses = document.getElementById('numProcessesPriorityPreemptive').value;
+            const numProcesses = document.getElementById('numProcessesRoundRobin').value;
             const formContainer = document.getElementById('processForm');
             formContainer.innerHTML = '';
             for (let i = 1; i <= numProcesses; i++) {
                 const formDiv = document.createElement('div');
                 formDiv.className = 'form-group';
                 formDiv.innerHTML = `
-                <label>Process ${i}:</label>
-                <input type="text" id="processName${i}" placeholder="Process Name">
-                <input type="number" id="arrivalTime${i}" placeholder="Arrival Time">
-                <input type="number" id="burstTime${i}" placeholder="Burst Time">
-                <input type="number" id="priority${i}" placeholder="Priority">
-            `;
+                    <label>Process ${i}:</label>
+                    <input type="text" id="processName${i}" placeholder="Process Name">
+                    <input type="number" id="arrivalTime${i}" placeholder="Arrival Time">
+                    <input type="number" id="burstTime${i}" placeholder="Burst Time">
+                `;
                 formContainer.appendChild(formDiv);
             }
         }
 
-        // Fungsi untuk menghitung Priority Preemptive
+        // Fungsi untuk menghitung Round Robin
         function calculate() {
-            const numProcesses = document.getElementById('numProcessesPriorityPreemptive').value;
+            const numProcesses = document.getElementById('numProcessesRoundRobin').value;
+            const timeQuantum = parseFloat(document.getElementById('timeQuantum').value) || 2;
             const processes = [];
+            
             for (let i = 1; i <= numProcesses; i++) {
                 processes.push({
                     name: document.getElementById(`processName${i}`).value || `P${i}`,
                     arrivalTime: parseFloat(document.getElementById(`arrivalTime${i}`).value) || 0,
                     burstTime: parseFloat(document.getElementById(`burstTime${i}`).value) || 1,
-                    priority: parseInt(document.getElementById(`priority${i}`).value) || 0,
                     remainingTime: parseFloat(document.getElementById(`burstTime${i}`).value) || 1,
                     completionTime: null,
                     waitingTime: 0,
                     turnaroundTime: 0
                 });
             }
-            const result = priorityPreemptive(processes);
+            
+            const result = roundRobin(processes, timeQuantum);
             displayResult(result);
         }
 
-        // Fungsi algoritma Priority Preemptive
-        function priorityPreemptive(processes) {
+        // Fungsi algoritma Round Robin
+        function roundRobin(processes, timeQuantum) {
             let currentTime = 0;
+            const n = processes.length;
+            const resultProcesses = [...processes];
             const timeline = [];
-            let executingProcess = null;
+            let queue = [];
             let completed = 0;
 
-            while (completed < processes.length) {
-                const readyProcesses = processes.filter(p =>
-                    p.arrivalTime <= currentTime &&
-                    p.completionTime === null &&
-                    p.remainingTime > 0
-                );
+            // Initialize queue with arrived processes
+            processes.forEach(p => {
+                if (p.arrivalTime <= currentTime) {
+                    queue.push(p);
+                }
+            });
 
-                if (readyProcesses.length === 0) {
+            while (completed < n) {
+                // Check for new arrived processes
+                if (queue.length === 0) {
                     currentTime++;
+                    processes.forEach(p => {
+                        if (p.arrivalTime <= currentTime && !p.completionTime) {
+                            queue.push(p);
+                        }
+                    });
                     continue;
                 }
 
-                readyProcesses.sort((a, b) =>
-                    a.priority - b.priority ||
-                    a.arrivalTime - b.arrivalTime
-                );
+                const currentProcess = queue.shift();
+                
+                // Execute for time quantum or remaining time
+                const executeTime = Math.min(timeQuantum, currentProcess.remainingTime);
+                currentProcess.remainingTime -= executeTime;
+                currentTime += executeTime;
 
-                const nextProcess = readyProcesses[0];
+                // Add to timeline
+                timeline.push({
+                    process: currentProcess.name,
+                    start: currentTime - executeTime,
+                    end: currentTime
+                });
 
-                if (executingProcess === null) {
-                    executingProcess = nextProcess;
-                } else if (executingProcess.priority > nextProcess.priority) {
-                    timeline.push({
-                        process: executingProcess.name,
-                        start: currentTime,
-                        end: currentTime + (executingProcess.remainingTime - nextProcess.remainingTime)
-                    });
-
-                    const executionTime = executingProcess.remainingTime - nextProcess.remainingTime;
-                    executingProcess.remainingTime -= executionTime;
-                    currentTime += executionTime;
-
-                    if (executingProcess.remainingTime === 0) {
-                        executingProcess.completionTime = currentTime;
-                        executingProcess.turnaroundTime = currentTime - executingProcess.arrivalTime;
-                        executingProcess.waitingTime = executingProcess.turnaroundTime - executingProcess.burstTime;
-                        completed++;
-                    }
-                    executingProcess = nextProcess;
-                } else {
-                    executingProcess = nextProcess;
-                }
-
-                if (executingProcess.remainingTime > 0) {
-                    timeline.push({
-                        process: executingProcess.name,
-                        start: currentTime,
-                        end: currentTime + executingProcess.remainingTime
-                    });
-
-                    currentTime += executingProcess.remainingTime;
-                    executingProcess.completionTime = currentTime;
-                    executingProcess.turnaroundTime = currentTime - executingProcess.arrivalTime;
-                    executingProcess.waitingTime = executingProcess.turnaroundTime - executingProcess.burstTime;
+                // Check if process is completed
+                if (currentProcess.remainingTime === 0) {
+                    currentProcess.completionTime = currentTime;
+                    currentProcess.turnaroundTime = currentProcess.completionTime - currentProcess.arrivalTime;
+                    currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.burstTime;
                     completed++;
+                } else {
+                    // Re-add to queue if not completed
+                    queue.push(currentProcess);
                 }
+
+                // Add new arrived processes during execution
+                processes.forEach(p => {
+                    if (p.arrivalTime <= currentTime && 
+                        p.remainingTime > 0 && 
+                        !queue.includes(p) && 
+                        !p.completionTime) {
+                        queue.push(p);
+                    }
+                });
             }
 
             return {
-                processes: processes,
-                avgWaitingTime: processes.reduce((sum, p) => sum + p.waitingTime, 0) / processes.length,
-                avgTurnaroundTime: processes.reduce((sum, p) => sum + p.turnaroundTime, 0) / processes.length,
+                processes: resultProcesses,
+                avgWaitingTime: resultProcesses.reduce((sum, p) => sum + p.waitingTime, 0) / resultProcesses.length,
+                avgTurnaroundTime: resultProcesses.reduce((sum, p) => sum + p.turnaroundTime, 0) / resultProcesses.length,
                 timeline: timeline
             };
         }
 
-        // Fungsi untuk menampilkan hasil
+        // Fungsi untuk menampilkan hasil (gunakan yang sama seperti file lain)
         function displayResult(result) {
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = '';
@@ -183,7 +183,7 @@
     `;
             resultDiv.appendChild(avgRow);
 
-            // Gantt Chart
+            // Gantt Chart (gunakan yang sama seperti file lain)
             const ganttDiv = document.createElement('div');
             ganttDiv.className = 'gantt-chart';
             ganttDiv.innerHTML = '<h3>Gantt Chart</h3>';
@@ -287,5 +287,4 @@
         document.getElementById('calculateBtn').addEventListener('click', calculate);
     </script>
 </body>
-
 </html>

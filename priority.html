@@ -38,17 +38,17 @@
                 const formDiv = document.createElement('div');
                 formDiv.className = 'form-group';
                 formDiv.innerHTML = `
-                    <label>Process ${i}:</label>
-                    <input type="text" id="processName${i}" placeholder="Process Name">
-                    <input type="number" id="arrivalTime${i}" placeholder="Arrival Time">
-                    <input type="number" id="burstTime${i}" placeholder="Burst Time">
-                    <input type="number" id="priority${i}" placeholder="Priority">
-                `;
+                <label>Process ${i}:</label>
+                <input type="text" id="processName${i}" placeholder="Process Name">
+                <input type="number" id="arrivalTime${i}" placeholder="Arrival Time">
+                <input type="number" id="burstTime${i}" placeholder="Burst Time">
+                <input type="number" id="priority${i}" placeholder="Priority">
+            `;
                 formContainer.appendChild(formDiv);
             }
         }
 
-        // Fungsi untuk menghitung Priority
+        // Fungsi untuk menghitung Priority Non-Preemptive
         function calculate() {
             const numProcesses = document.getElementById('numProcessesPriority').value;
             const processes = [];
@@ -60,16 +60,18 @@
                     priority: parseInt(document.getElementById(`priority${i}`).value) || 0
                 });
             }
-            const result = priority(processes);
+            const result = priorityNonPreemptive(processes);
             displayResult(result);
         }
 
-        // Fungsi algoritma Priority
+        // Fungsi algoritma Priority Non-Preemptive
         function priorityNonPreemptive(processes) {
-            processes.sort((a, b) =>
-                a.priority - b.priority ||
-                a.arrivalTime - b.arrivalTime
-            );
+            processes.sort((a, b) => {
+                if (a.priority !== b.priority) return a.priority - b.priority;
+                if (a.arrivalTime !== b.arrivalTime) return a.arrivalTime - b.arrivalTime;
+                return a.name.localeCompare(b.name);
+            });
+
             let currentTime = 0;
             const resultProcesses = [];
             for (const process of processes) {
@@ -80,11 +82,11 @@
                 resultProcesses.push(process);
                 currentTime = process.completionTime;
             }
+
             return {
                 processes: resultProcesses,
                 avgWaitingTime: resultProcesses.reduce((sum, p) => sum + p.waitingTime, 0) / resultProcesses.length,
-                avgTurnaroundTime: resultProcesses.reduce((sum, p) => sum + p.turnaroundTime, 0) / resultProcesses.length,
-                executionOrder: resultProcesses.map(p => p.name)
+                avgTurnaroundTime: resultProcesses.reduce((sum, p) => sum + p.turnaroundTime, 0) / resultProcesses.length
             };
         }
         // Fungsi untuk menampilkan hasil
@@ -228,7 +230,6 @@
             resultDiv.appendChild(stepsDiv);
         }
 
-        // Menambahkan event listener untuk tombol
         document.getElementById('generateBtn').addEventListener('click', generateForm);
         document.getElementById('calculateBtn').addEventListener('click', calculate);
     </script>
