@@ -3,6 +3,7 @@
 Projek ini adalah simulator penjadwalan CPU yang memungkinkan pengguna untuk memvisualisasikan dan menghitung berbagai algoritma penjadwalan CPU. Simulator ini mendukung beberapa algoritma penjadwalan termasuk FCFS (First-Come, First-Served), SJF (Shortest Job First), SRTF (Shortest Remaining Time First), dan Penjadwalan Berprioritas.
 
 kamu bisa melihat implementasinya di :
+https://risqullah.github.io/Penjadwalan_CPU/
 
 ## Fitur
 
