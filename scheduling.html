@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Sistem Penjadwalan CPU</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="logo">
         <img src="https://i.pinimg.com/736x/71/7e/1e/717e1e8ef23e658ab8964928b84caa3e.jpg" alt="Logo" width="100">
@@ -124,7 +126,6 @@
             
             let resultHTML = `<h2 style="color: #333;">Hasil Penjadwalan: ${getAlgorithmName(algorithm)}</h2>`;
             
-            // Implementasi untuk masing-masing algoritma
             if(algorithm === 'fcfs') {
                 // Urutkan berdasarkan waktu kedatangan
                 const sorted = [...processes].sort((a, b) => a.arrival - b.arrival);
@@ -268,18 +269,21 @@
             else if(algorithm === 'rr') {
                 const quantum = parseInt(document.getElementById('quantumTime').value);
                 if(quantum < 1) {
-                    alert('Time Quantum harus lebih besar dari 0');
+                    alert('Time Quantum must be greater than 0');
                     return;
                 }
                 
-                let time = 0, doneCount = 0;
+                let time = 0;
+                let doneCount = 0;
                 const queue = [];
-                const done = Array(processes.length).fill(false);
+                const added = Array(processes.length).fill(false);
                 
                 while(doneCount < processes.length) {
+                    // Add processes that have arrived but are not yet in the queue
                     for(let i = 0; i < processes.length; i++) {
-                        if(!done[i] && processes[i].arrival <= time && processes[i].remaining > 0 && !queue.includes(i)) {
+                        if(!added[i] && processes[i].arrival <= time) {
                             queue.push(i);
+                            added[i] = true;
                         }
                     }
                     
@@ -289,6 +293,7 @@
                     }
                     
                     const idx = queue.shift();
+                    
                     if(processes[idx].start === -1) {
                         processes[idx].start = time;
                     }
@@ -297,18 +302,26 @@
                     processes[idx].remaining -= exec;
                     time += exec;
                     
+                    // Add new processes that arrived during execution
+                    for(let i = 0; i < processes.length; i++) {
+                        if(!added[i] && processes[i].arrival <= time) {
+                            queue.push(i);
+                            added[i] = true;
+                        }
+                    }
+                    
+                    // If the process is not completed, add it back to the queue
                     if(processes[idx].remaining > 0) {
                         queue.push(idx);
                     } else {
                         processes[idx].complete = time;
                         processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
                         processes[idx].waiting = processes[idx].turnaround - processes[idx].burst;
-                        done[idx] = true;
                         doneCount++;
                     }
                 }
                 
-                resultHTML = `<h2 style="color: #333;">Hasil Penjadwalan: ROUND ROBIN (Quantum=${quantum})</h2>`;
+                resultHTML = `<h2 style="color: #333;">Scheduling Result: ROUND ROBIN (Quantum=${quantum})</h2>`;
             }
 
             // Hitung rata-rata
