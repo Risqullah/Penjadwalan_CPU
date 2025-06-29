@@ -10,20 +10,6 @@ https://risqullah.github.io/Penjadwalan_CPU/
 - Visualisasi penjadwalan CPU menggunakan diagram Gantt
 - Perhitungan metrik penting seperti waktu tunggu dan waktu turnaround
 
-## Cara Menggunakan
-
-1. Clone repositori: git clone https://github.com/Risqullah/Penjadwalan_CPU.git
-
-2. Buka file `index.html` di peramban web Anda.
-
-3. Pilih algoritma penjadwalan dari dashboard.
-
-4. Masukkan jumlah proses serta waktu tiba dan waktu eksekusi masing-masing proses.
-
-5. Klik "Generate Form" untuk membuat bidang input untuk proses Anda.
-
-6. Klik "Hitung" untuk melihat hasilnya, termasuk diagram Gantt dan perhitungan metrik.
-
 ## Algoritma yang Diimplementasikan
 
 - **FCFS (First-Come, First-Served)**: Proses dieksekusi berdasarkan urutan kedatangan.
