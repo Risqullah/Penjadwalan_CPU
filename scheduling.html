@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sistem Penjadwalan CPU</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="logo">
+        <img src="https://i.pinimg.com/736x/71/7e/1e/717e1e8ef23e658ab8964928b84caa3e.jpg" alt="Logo" width="100">
+    </div>
+
+    <div class="container">
+        <div id="processGenerator" class="process-input center-box">
+            <h2>Berapa Banyak Proses?</h2>
+            <div class="button-container">
+                <input type="number" id="processCount" value="3" min="1" max="10">
+                <button onclick="generateProcesses()">Generate Proses</button>
+            </div>
+        </div>
+
+        <div id="schedulingSection" class="hidden">
+            <h2>Data Proses</h2>
+            <table id="processTable">
+                <thead>
+                    <tr>
+                        <th>Proses</th>
+                        <th>Waktu Kedatangan</th>
+                        <th>Waktu Burst</th>
+                        <th>Prioritas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+
+            <div class="algorithm-buttons">
+                <h2>Pilih Algoritma</h2>
+                <button onclick="schedule('fcfs')" class="algorithm-btn">FCFS</button>
+                <button onclick="schedule('sjf')" class="algorithm-btn">SJF</button>
+                <button onclick="schedule('priority_non')" class="algorithm-btn">Priority (Non-Preemptive)</button>
+                <button onclick="schedule('srtf')" class="algorithm-btn">SRTF</button>
+                <button onclick="schedule('priority_pre')" class="algorithm-btn">Priority (Preemptive)</button>
+                <button onclick="showQuantumInput()" class="algorithm-btn">Round Robin</button>
+            </div>
+        </div>
+
+        <div id="quantumInput" class="hidden center-box">
+            <label for="quantumTime">Masukkan Time Quantum: </label>
+            <input type="number" id="quantumTime" value="2" min="1">
+            <button onclick="schedule('rr')" class="algorithm-btn">Proses Round Robin</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let processes = [];
+        let schedulingSection = document.getElementById('schedulingSection');
+        let processGenerator = document.getElementById('processGenerator');
+        let quantumInput = document.getElementById('quantumInput');
+
+        function generateProcesses() {
+            const count = parseInt(document.getElementById('processCount').value);
+            if(count < 1 || count > 10) {
+                alert('Masukkan angka antara 1-10');
+                return;
+            }
+
+            processGenerator.classList.add('hidden');
+            schedulingSection.classList.remove('hidden');
+
+            const tbody = document.querySelector('#processTable tbody');
+            tbody.innerHTML = '';
+
+            processes = [];
+            
+            for(let i = 0; i < count; i++) {
+                const row = document.createElement('tr');
+                
+                const procCell = document.createElement('td');
+                procCell.textContent = `P${i+1}`;
+                
+                const arrivalCell = document.createElement('td');
+                arrivalCell.innerHTML = `<input type="number" value="${i}" min="0">`;
+                
+                const burstCell = document.createElement('td');
+                burstCell.innerHTML = `<input type="number" value="${Math.floor(Math.random() * 5) + 1}" min="1">`;
+                
+                const priorityCell = document.createElement('td');
+                priorityCell.innerHTML = `<input type="number" value="${Math.floor(Math.random() * 5) + 1}" min="1">`;
+                
+                row.appendChild(procCell);
+                row.appendChild(arrivalCell);
+                row.appendChild(burstCell);
+                row.appendChild(priorityCell);
+                
+                tbody.appendChild(row);
+            }
+        }
+
+        function showQuantumInput() {
+            quantumInput.classList.remove('hidden');
+        }
+
+        function schedule(algorithm) {
+            // Ambil data dari tabel
+            const rows = document.querySelectorAll('#processTable tbody tr');
+            processes = Array.from(rows).map((row, i) => {
+                const cells = row.cells;
+                return {
+                    id: cells[0].textContent,
+                    arrival: parseInt(cells[1].children[0].value),
+                    burst: parseInt(cells[2].children[0].value),
+                    priority: parseInt(cells[3].children[0].value),
+                    remaining: parseInt(cells[2].children[0].value),
+                    start: -1,
+                    complete: 0,
+                    turnaround: 0,
+                    waiting: 0
+                };
+            });
+
+            quantumInput.classList.add('hidden');
+            
+            let resultHTML = `<h2 style="color: #333;">Hasil Penjadwalan: ${getAlgorithmName(algorithm)}</h2>`;
+            
+            // Implementasi untuk masing-masing algoritma
+            if(algorithm === 'fcfs') {
+                // Urutkan berdasarkan waktu kedatangan
+                const sorted = [...processes].sort((a, b) => a.arrival - b.arrival);
+                
+                let time = 0;
+                for(const p of sorted) {
+                    if(time < p.arrival) time = p.arrival;
+                    p.start = time;
+                    time += p.burst;
+                    p.complete = time;
+                    p.turnaround = p.complete - p.arrival;
+                    p.waiting = p.turnaround - p.burst;
+                }
+            }
+            else if(algorithm === 'sjf') {
+                const done = Array(processes.length).fill(false);
+                let time = 0, doneCount = 0;
+                
+                while(doneCount < processes.length) {
+                    let idx = -1;
+                    let min = Infinity;
+                    
+                    for(let i = 0; i < processes.length; i++) {
+                        if(!done[i] && processes[i].arrival <= time && processes[i].burst < min) {
+                            min = processes[i].burst;
+                            idx = i;
+                        }
+                    }
+                    
+                    if(idx === -1) {
+                        time++;
+                        continue;
+                    }
+                    
+                    processes[idx].start = time;
+                    time += processes[idx].burst;
+                    processes[idx].complete = time;
+                    processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
+                    processes[idx].waiting = processes[idx].turnaround - processes[idx].burst;
+                    done[idx] = true;
+                    doneCount++;
+                }
+            }
+            else if(algorithm === 'priority_non') {
+                const done = Array(processes.length).fill(false);
+                let time = 0, doneCount = 0;
+                
+                while(doneCount < processes.length) {
+                    let idx = -1;
+                    let minPriority = Infinity;
+                    
+                    for(let i = 0; i < processes.length; i++) {
+                        if(!done[i] && processes[i].arrival <= time && processes[i].priority < minPriority) {
+                            minPriority = processes[i].priority;
+                            idx = i;
+                        }
+                    }
+                    
+                    if(idx === -1) {
+                        time++;
+                        continue;
+                    }
+                    
+                    processes[idx].start = time;
+                    time += processes[idx].burst;
+                    processes[idx].complete = time;
+                    processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
+                    processes[idx].waiting = processes[idx].turnaround - processes[idx].burst;
+                    done[idx] = true;
+                    doneCount++;
+                }
+            }
+            else if(algorithm === 'srtf') {
+                const done = Array(processes.length).fill(false);
+                let time = 0, doneCount = 0;
+                
+                while(doneCount < processes.length) {
+                    let idx = -1, min = Infinity;
+                    
+                    for(let i = 0; i < processes.length; i++) {
+                        if(!done[i] && processes[i].arrival <= time && processes[i].remaining < min && processes[i].remaining > 0) {
+                            min = processes[i].remaining;
+                            idx = i;
+                        }
+                    }
+                    
+                    if(idx === -1) {
+                        time++;
+                        continue;
+                    }
+                    
+                    if(processes[idx].start === -1) {
+                        processes[idx].start = time;
+                    }
+                    
+                    processes[idx].remaining--;
+                    if(processes[idx].remaining === 0) {
+                        processes[idx].complete = time + 1;
+                        processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
+                        processes[idx].waiting = processes[idx].turnaround - processes[idx].burst;
+                        done[idx] = true;
+                        doneCount++;
+                    }
+                    time++;
+                }
+            }
+            else if(algorithm === 'priority_pre') {
+                const done = Array(processes.length).fill(false);
+                let time = 0, doneCount = 0;
+                
+                while(doneCount < processes.length) {
+                    let idx = -1, min = Infinity;
+                    
+                    for(let i = 0; i < processes.length; i++) {
+                        if(!done[i] && processes[i].arrival <= time && processes[i].priority < min && processes[i].remaining > 0) {
+                            min = processes[i].priority;
+                            idx = i;
+                        }
+                    }
+                    
+                    if(idx === -1) {
+                        time++;
+                        continue;
+                    }
+                    
+                    if(processes[idx].start === -1) {
+                        processes[idx].start = time;
+                    }
+                    
+                    processes[idx].remaining--;
+                    if(processes[idx].remaining === 0) {
+                        processes[idx].complete = time + 1;
+                        processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
+                        processes[idx].waiting = processes[idx].turnaround - processes[idx].burst;
+                        done[idx] = true;
+                        doneCount++;
+                    }
+                    time++;
+                }
+            }
+            else if(algorithm === 'rr') {
+                const quantum = parseInt(document.getElementById('quantumTime').value);
+                if(quantum < 1) {
+                    alert('Time Quantum harus lebih besar dari 0');
+                    return;
+                }
+                
+                let time = 0, doneCount = 0;
+                const queue = [];
+                const done = Array(processes.length).fill(false);
+                
+                while(doneCount < processes.length) {
+                    for(let i = 0; i < processes.length; i++) {
+                        if(!done[i] && processes[i].arrival <= time && processes[i].remaining > 0 && !queue.includes(i)) {
+                            queue.push(i);
+                        }
+                    }
+                    
+                    if(queue.length === 0) {
+                        time++;
+                        continue;
+                    }
+                    
+                    const idx = queue.shift();
+                    if(processes[idx].start === -1) {
+                        processes[idx].start = time;
+                    }
+                    
+                    const exec = Math.min(quantum, processes[idx].remaining);
+                    processes[idx].remaining -= exec;
+                    time += exec;
+                    
+                    if(processes[idx].remaining > 0) {
+                        queue.push(idx);
+                    } else {
+                        processes[idx].complete = time;
+                        processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
+                        processes[idx].waiting = processes[idx].turnaround - processes[idx].burst;
+                        done[idx] = true;
+                        doneCount++;
+                    }
+                }
+                
+                resultHTML = `<h2 style="color: #333;">Hasil Penjadwalan: ROUND ROBIN (Quantum=${quantum})</h2>`;
+            }
+
+            // Hitung rata-rata
+            const avgTurnaround = processes.reduce((sum, p) => sum + p.turnaround, 0) / processes.length;
+            const avgWaiting = processes.reduce((sum, p) => sum + p.waiting, 0) / processes.length;
+
+            // Bangun tabel hasil
+            resultHTML += '<div class="result-container">';
+            resultHTML += '<h3>Hasil Perhitungan</h3>';
+            resultHTML += '<table><tr><th>Proses</th><th>AT</th><th>BT</th><th>FT</th><th>TAT</th><th>WT</th></tr>';
+            
+            for(const p of processes) {
+                resultHTML += `<tr>
+                    <td>${p.id}</td>
+                    <td>${p.arrival}</td>
+                    <td>${p.burst}</td>
+                    <td>${p.complete}</td>
+                    <td>${p.turnaround}</td>
+                    <td>${p.waiting}</td>
+                </tr>`;
+            }
+            
+            resultHTML += `</table>
+            <p>Rata-rata TAT: ${avgTurnaround.toFixed(2)}</p>
+            <p>Rata-rata Waiting Time: ${avgWaiting.toFixed(2)}</p>`;
+
+            // Tambahkan diagram Gantt
+            resultHTML += buildGanttChart();
+            resultHTML += '</div>';
+
+            document.getElementById('result').innerHTML = resultHTML;
+            document.getElementById('result').style.display = 'block';
+        }
+
+        function buildGanttChart() {
+            let ganttHTML = '<div class="gantt-chart">';
+            ganttHTML += '<h3>Diagram Gantt</h3>';
+            ganttHTML += '<div style="white-space: nowrap;">';
+            
+            // Urutkan proses berdasarkan waktu mulai
+            const sortedProcesses = [...processes].sort((a, b) => a.start - b.start);
+            
+            let currentTime = 0;
+            for(const p of sortedProcesses) {
+                if(p.start > currentTime) {
+                    // Tambahkan jeda kosong
+                    const width = (p.start - currentTime) * 30;
+                    ganttHTML += `<span style="display:inline-block; width:${width}px; background:#f0f0f0;"></span>`;
+                    currentTime = p.start;
+                }
+                
+                const width = p.burst * 30;
+                ganttHTML += `<span style="display:inline-block; width:${width}px; background:${getRandomColor()};">${p.id}</span>`;
+                currentTime += p.burst;
+            }
+            
+            ganttHTML += '</div></div>';
+            return ganttHTML;
+        }
+
+        function getRandomColor() {
+            const colors = ['red', 'blue', 'green', 'purple', 'orange', 'teal', 'pink', 'brown', 'gold', 'navy'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function getAlgorithmName(algorithm) {
+            const names = {
+                'fcfs': 'FCFS',
+                'sjf': 'SJF (Non-Preemptive)',
+                'priority_non': 'Priority (Non-Preemptive)',
+                'srtf': 'SRTF',
+                'priority_pre': 'Priority (Preemptive)',
+                'rr': 'Round Robin'
+            };
+            return names[algorithm] || algorithm;
+        }
+    </script>
+</body>
+</html>
