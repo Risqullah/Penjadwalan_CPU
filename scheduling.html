@@ -170,16 +170,19 @@
                 }
             }
             else if(algorithm === 'priority_non') {
-                const done = Array(processes.length).fill(false);
+                // Sort processes by arrival time initially
+                const sorted = [...processes].sort((a, b) => a.arrival - b.arrival);
+                
+                const done = Array(sorted.length).fill(false);
                 let time = 0, doneCount = 0;
                 
-                while(doneCount < processes.length) {
+                while(doneCount < sorted.length) {
                     let idx = -1;
-                    let minPriority = Infinity;
+                    let minPrio = Infinity;
                     
-                    for(let i = 0; i < processes.length; i++) {
-                        if(!done[i] && processes[i].arrival <= time && processes[i].priority < minPriority) {
-                            minPriority = processes[i].priority;
+                    for(let i = 0; i < sorted.length; i++) {
+                        if(!done[i] && sorted[i].arrival <= time && sorted[i].priority < minPrio) {
+                            minPrio = sorted[i].priority;
                             idx = i;
                         }
                     }
@@ -189,14 +192,16 @@
                         continue;
                     }
                     
-                    processes[idx].start = time;
-                    time += processes[idx].burst;
-                    processes[idx].complete = time;
-                    processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
-                    processes[idx].waiting = processes[idx].turnaround - processes[idx].burst;
+                    sorted[idx].start = time;
+                    time += sorted[idx].burst;
+                    sorted[idx].complete = time;
+                    sorted[idx].turnaround = sorted[idx].complete - sorted[idx].arrival;
+                    sorted[idx].waiting = sorted[idx].turnaround - sorted[idx].burst;
                     done[idx] = true;
                     doneCount++;
                 }
+                
+                processes = sorted;
             }
             else if(algorithm === 'srtf') {
                 const done = Array(processes.length).fill(false);
@@ -233,15 +238,19 @@
                 }
             }
             else if(algorithm === 'priority_pre') {
-                const done = Array(processes.length).fill(false);
+                // Sort processes by arrival time initially
+                processes.sort((a, b) => a.arrival - b.arrival);
+                
+                const n = processes.length;
+                const done = Array(n).fill(false);
                 let time = 0, doneCount = 0;
                 
-                while(doneCount < processes.length) {
-                    let idx = -1, min = Infinity;
+                while(doneCount < n) {
+                    let idx = -1, minPrio = Infinity;
                     
-                    for(let i = 0; i < processes.length; i++) {
-                        if(!done[i] && processes[i].arrival <= time && processes[i].priority < min && processes[i].remaining > 0) {
-                            min = processes[i].priority;
+                    for(let i = 0; i < n; i++) {
+                        if(!done[i] && processes[i].arrival <= time && processes[i].priority < minPrio && processes[i].remaining > 0) {
+                            minPrio = processes[i].priority;
                             idx = i;
                         }
                     }
@@ -273,26 +282,30 @@
                     return;
                 }
                 
-                let time = 0;
-                let doneCount = 0;
-                const queue = [];
-                const added = Array(processes.length).fill(false);
+                // Sort processes by arrival time
+                processes.sort((a, b) => a.arrival - b.arrival);
                 
-                while(doneCount < processes.length) {
+                const n = processes.length;
+                const queue = [];
+                const added = Array(n).fill(false);
+                let front = 0, rear = 0;
+                let time = 0, doneCount = 0;
+                
+                while(doneCount < n) {
                     // Add processes that have arrived but are not yet in the queue
-                    for(let i = 0; i < processes.length; i++) {
+                    for(let i = 0; i < n; i++) {
                         if(!added[i] && processes[i].arrival <= time) {
-                            queue.push(i);
+                            queue[rear++] = i;
                             added[i] = true;
                         }
                     }
                     
-                    if(queue.length === 0) {
+                    if(front === rear) {
                         time++;
                         continue;
                     }
                     
-                    const idx = queue.shift();
+                    const idx = queue[front++];
                     
                     if(processes[idx].start === -1) {
                         processes[idx].start = time;
@@ -303,16 +316,16 @@
                     time += exec;
                     
                     // Add new processes that arrived during execution
-                    for(let i = 0; i < processes.length; i++) {
+                    for(let i = 0; i < n; i++) {
                         if(!added[i] && processes[i].arrival <= time) {
-                            queue.push(i);
+                            queue[rear++] = i;
                             added[i] = true;
                         }
                     }
                     
                     // If the process is not completed, add it back to the queue
                     if(processes[idx].remaining > 0) {
-                        queue.push(idx);
+                        queue[rear++] = idx;
                     } else {
                         processes[idx].complete = time;
                         processes[idx].turnaround = processes[idx].complete - processes[idx].arrival;
